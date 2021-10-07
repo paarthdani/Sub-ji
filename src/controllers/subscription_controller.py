@@ -30,7 +30,7 @@ def get_user_id_from_username(user_name):
     user_data = db.session.query(UserModel).filter(UserModel.user_name == user_name).first()
 
     if user_data is None:
-        return json.dumps({"message": "user does not exist"}), 400
+        return json.dumps({"message": "User does not exist"}), 400
     user_data = json.dumps(user_data.user_json_serialize_all())
     user_id = json.loads(user_data).get("id")
     return user_id
@@ -65,7 +65,7 @@ def new_subscription():
     plan_cost = plan_cost_all.get(plan)
     plan_validity = plan_validity_all.get(plan)
     if plan_cost is None or plan_validity is None:
-        return json.dumps({"message": "plan does not exist"}), 400
+        return json.dumps({"message": "Plan does not exist"}), 400
 
     start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d")
     valid_till = get_plan_validity(plan, start_date, plan_validity)
@@ -76,7 +76,7 @@ def new_subscription():
         .first()
 
     if current_active_sub is not None and current_active_sub.subscription_json_serialize_all()['plan'] == plan:
-        return json.dumps({"message": "plan is already active"}), 400
+        return json.dumps({"message": "Plan is already active"}), 400
     else:
         try:
             if current_active_sub is None:
@@ -132,8 +132,8 @@ def get_subscription_by_username_by_currentdate(user_name, current_date):
     current_date = datetime.datetime.strptime(current_date, '%Y-%m-%d')
     subscription = db.session.query(SubscriptionModel) \
         .filter(SubscriptionModel.user_id == user_id,
-                SubscriptionModel.status == True, SubscriptionModel.start_date < str(current_date),
-                SubscriptionModel.valid_till > str(current_date)).first()
+                SubscriptionModel.status == True, SubscriptionModel.start_date <= str(current_date),
+                SubscriptionModel.valid_till >= str(current_date)).first()
 
     if subscription is None:
         return json.dumps({"message": "No active plan for the user"}), 400

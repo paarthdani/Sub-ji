@@ -21,6 +21,6 @@ def add_user(username):
 def get_by_username(username):
     user_data = db.session.query(UserModel).filter(UserModel.user_name == username).first()
     if user_data is None:
-        return json.dumps({"message": "user does not exist"}), 400
+        return json.dumps({"message": "User does not Exist"}), 400
     else:
         return json.dumps(user_data.user_json_serializer())
