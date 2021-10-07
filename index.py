@@ -50,6 +50,9 @@ class SubscriptionModel(db.Model):
         return {"id": self.id, "user_id": str(self.user_id), "created_at": str(self.created_at), "status": self.status,
                 "start_date": str(self.start_date), "valid_till": str(self.valid_till), "plan": self.plan}
 
+    def subscription_json_serializer(self):
+        return {"plan": self.plan, "start_date": str(self.start_date), "valid_till": str(self.valid_till)}
+
 
 class PurchaseOrder(db.Model):
     __tablename__ = "purchase_orders"
@@ -62,7 +65,7 @@ class PurchaseOrder(db.Model):
 
     def purchase_order_json_serialize_all(self):
         return {"id": self.id, "user_id": str(self.user_id), "status": self.status,
-                "payment_id":self.payment_id, "plan": self.plan}
+                "payment_id": self.payment_id, "plan": self.plan}
 
 
 @app.route('/user/<username>', methods=['PUT'])
@@ -141,7 +144,7 @@ def new_subscription():
         .order_by(desc(SubscriptionModel.created_at)) \
         .first()
 
-    print(current_active_sub.subscription_json_serialize_all())
+    # print(current_active_sub.subscription_json_serialize_all())
 
     if current_active_sub is not None and current_active_sub.subscription_json_serialize_all()['plan'] == plan:
         return json.dumps({"message": "plan is already active"})
@@ -182,7 +185,8 @@ def new_subscription():
     db.session.add(subscription_model)
     if current_active_sub is not None:
         print("in here")
-        SubscriptionModel.query.filter_by(id=current_active_sub.subscription_json_serialize_all()['id']).update({SubscriptionModel.status: False})
+        SubscriptionModel.query.filter_by(id=current_active_sub.subscription_json_serialize_all()['id']).update(
+            {SubscriptionModel.status: False})
 
     purchase_order = PurchaseOrder(plan=plan, status="SUCCESS", payment_id=payment_id,
                                    user_id=json.loads(user_data).get("id"))
@@ -190,6 +194,60 @@ def new_subscription():
     db.session.commit()
 
     return json.dumps({"status": "SUCCESS", "amount": amount})
+
+
+@app.route("/subscription/<user_name>", methods=['GET'])
+def get_subscription_by_username(user_name):
+    user_data = db.session.query(UserModel).filter(UserModel.user_name == user_name).first()
+
+    print(user_data)
+
+    if user_data is None:
+        return json.dumps({"message": "user does not exist"})
+    user_data = json.dumps(user_data.user_json_serialize_all())
+
+    print(user_data)
+
+    subscription_list = db.session.query(SubscriptionModel) \
+        .filter(SubscriptionModel.user_id == json.loads(user_data).get("id")).all()
+
+    result = []
+    for i in subscription_list:
+        result.append(i.subscription_json_serializer())
+    print(result)
+    return json.dumps(result)
+
+
+@app.route("/subscription/<user_name>/<current_date>", methods=['GET'])
+def get_subscription_by_username_by_currentdate(user_name, current_date):
+    user_data = db.session.query(UserModel).filter(UserModel.user_name == user_name).first()
+    if user_data is None:
+        return json.dumps({"message": "user does not exist"})
+    user_data = json.dumps(user_data.user_json_serialize_all())
+    print(user_data)
+    current_date = datetime.datetime.strptime(current_date, '%Y-%m-%d')
+    subscription = db.session.query(SubscriptionModel) \
+        .filter(SubscriptionModel.user_id == json.loads(user_data).get("id"),
+                SubscriptionModel.status == True, SubscriptionModel.start_date < str(current_date),
+                SubscriptionModel.valid_till > str(current_date)).first()
+
+    if subscription is None:
+        return json.dumps({"message": "No active plan for the user"})
+
+    print(current_date)
+
+    subscription_object = json.loads(json.dumps(subscription.subscription_json_serializer()))
+
+    valid_till = subscription_object.get("valid_till")
+    print(valid_till)
+    valid_till = datetime.datetime.strptime(valid_till, '%Y-%m-%d %H:%M:%S')
+
+    days_left = valid_till - current_date
+    print(days_left)
+    if days_left.days < 0:
+        return json.dumps({"message": "Plan is already ended"})
+    else:
+        return json.dumps({"plan_id": subscription_object['plan'], "days_left": days_left.days})
 
 
 db.create_all()
