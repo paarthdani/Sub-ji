@@ -10,5 +10,3 @@ db = SQLAlchemy(app)
 from src.controllers import subscription_controller, user_controller
 
 db.create_all()
-
-

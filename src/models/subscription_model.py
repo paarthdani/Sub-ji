@@ -18,4 +18,4 @@ class SubscriptionModel(db.Model):
                 "start_date": str(self.start_date), "valid_till": str(self.valid_till), "plan": self.plan}
 
     def subscription_json_serializer(self):
-        return {"plan": self.plan, "start_date": str(self.start_date), "valid_till": str(self.valid_till)}
+        return {"plan_id": self.plan, "start_date": str(self.start_date), "valid_till": str(self.valid_till)}
